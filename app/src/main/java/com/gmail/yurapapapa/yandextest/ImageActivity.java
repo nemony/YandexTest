@@ -10,14 +10,13 @@ import android.view.WindowManager;
 /**
  * Created by yurap_000 on 011 11 сен.
  */
-public class ImageActivity extends FragmentActivity{
+public class ImageActivity extends FragmentActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity);
-
 
         FragmentManager fm = getSupportFragmentManager();
         Fragment fragment = fm.findFragmentById(R.id.fragmentContainer);
