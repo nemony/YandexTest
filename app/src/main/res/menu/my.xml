@@ -1,9 +1,10 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    tools:context=".MyActivity" >
-    <item android:id="@+id/action_settings"
-        android:title="@string/action_settings"
+    tools:context=".MyActivity">
+    <item
+        android:id="@+id/sign_out"
         android:orderInCategory="100"
-        app:showAsAction="never" />
+        android:title="Sign Out"
+        app:showAsAction="ifRoom|withText" />
 </menu>

@@ -27,22 +27,17 @@ import java.util.ArrayList;
 public class PicsDownloader extends HandlerThread {
     private static final String TAG = "PicsDownloader";
     private static final int MESSAGE_DOWNLOAD = 0;
-    private Context mContext;
     private static Handler mHandler;
-
     Listener listener;
-
-    public interface Listener {
-        void onPicDownloaded(Bitmap bitmap);
-    }
-
-    public void setListener(Listener listener) {
-        this.listener = listener;
-    }
+    private Context mContext;
 
     public PicsDownloader(Context context) {
         super(TAG);
         mContext = context;
+    }
+
+    public void setListener(Listener listener) {
+        this.listener = listener;
     }
 
     @Override
@@ -61,11 +56,13 @@ public class PicsDownloader extends HandlerThread {
         Log.d(TAG, "onLooperPrepared2");
     }
 
-    public boolean queuePics(ArrayList<ListItem> list) {
+    public boolean queuePics(ArrayList<ListItem> list, int clickedItem) {
         if (mHandler == null)
             return false;
-        for (ListItem item : list) {
-            mHandler.obtainMessage(MESSAGE_DOWNLOAD, item).sendToTarget();
+
+        for (int i = 0; i < list.size(); i++) {
+
+            mHandler.obtainMessage(MESSAGE_DOWNLOAD, list.get((clickedItem + i) % list.size())).sendToTarget();
         }
         return true;
     }
@@ -88,8 +85,8 @@ public class PicsDownloader extends HandlerThread {
             }
             in = response.getEntity().getContent();
             out = new ByteArrayOutputStream();
-            int bytesRead = 0;
-            byte[] buff = new byte[1024 * 128];
+            int bytesRead;
+            byte[] buff = new byte[1024 * 64];
             while ((bytesRead = in.read(buff)) > 0) {
                 out.write(buff, 0, bytesRead);
             }
@@ -106,5 +103,9 @@ public class PicsDownloader extends HandlerThread {
     public void clearQueue() {
         mHandler.removeMessages(MESSAGE_DOWNLOAD);
 
+    }
+
+    public interface Listener {
+        void onPicDownloaded(Bitmap bitmap);
     }
 }

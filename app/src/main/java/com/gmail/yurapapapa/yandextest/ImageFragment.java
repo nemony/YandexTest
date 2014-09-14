@@ -3,7 +3,10 @@ package com.gmail.yurapapapa.yandextest;
 import android.app.Dialog;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.TransitionDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -27,18 +30,24 @@ import java.util.concurrent.TimeUnit;
  */
 public class ImageFragment extends Fragment {
     private static final String TAG = "ImageFragment";
+    private PicsDownloader.Listener listener = new PicsDownloader.Listener() {
+        @Override
+        public void onPicDownloaded(final Bitmap bitmap) {
+            Log.d(TAG, "onPicDownloaded");
+            bitmaps.add(bitmap);
+            dialog.dismiss();
+            slidingThread.resumeSliding();
+        }
+    };
+    private static final int MESSAGE_OK = 1;
+    private static final int MESSAGE_FAIL = 0;
     private PicsDownloader picsDownloader;
     private ImageView imageView;
     private List<Bitmap> bitmaps = new ArrayList<Bitmap>();
     private int amountOfPics;
     private int currPos = 0;
     private Dialog dialog;
-
-    private static final int MESSAGE_OK = 1;
-    private static final int MESSAGE_FAIL = 0;
     private boolean shouldSlide = true;
-    private boolean shouldSlideSync;
-
     private Handler mHandler;
     private SlidingThread slidingThread;
 
@@ -55,6 +64,7 @@ public class ImageFragment extends Fragment {
         slidingThread = new SlidingThread();
         slidingThread.start();
     }
+
     private void createHandler() {
         mHandler = new Handler() {
             @Override
@@ -64,57 +74,38 @@ public class ImageFragment extends Fragment {
                         Log.d(TAG, "sdf");
                         if (dialog.isShowing())
                             dialog.dismiss();
-                        //imageView.setVisibility(View.VISIBLE);
-                        imageView.setImageBitmap(bitmaps.get(currPos));
+
+                        transitionGo(bitmaps.get(currPos));
                         currPos = (currPos + 1) % amountOfPics;
                         break;
                     case MESSAGE_FAIL:
-                        Log.d(TAG, "MESSAGE_FAILED");
-                        //imageView.setVisibility(View.INVISIBLE);
-                            dialog.show();
+                        dialog.show();
                 }
             }
         };
     }
 
+    private void transitionGo(Bitmap result) {
+        BitmapDrawable next = new BitmapDrawable(getActivity().getResources(), result);
+        Drawable previous = imageView.getDrawable();
 
-
-    private PicsDownloader.Listener listener = new PicsDownloader.Listener() {
-        @Override
-        public void onPicDownloaded(final Bitmap bitmap) {
-            Log.d(TAG, "onPicDownloaded");
-            bitmaps.add(bitmap);
-            slidingThread.resumeSliding();
+        // if previous is a TransitionDrawable, get its second drawableItem
+        if (previous instanceof TransitionDrawable) {
+            Log.d(TAG, "instance of TransDrawable");
+            previous = ((TransitionDrawable) previous).getDrawable(1);
         }
-    };
 
+        if (previous == null) {
+            Log.d(TAG, "previous == null");
+            imageView.setImageDrawable(next);
+        } else {
+            Log.d(TAG, "starting Transition");
 
-    private class SlidingThread extends Thread {
-        synchronized void resumeSliding(){
-            Log.d(TAG, "resumeSliding");
-            shouldSlideSync = true;
-            notify();
-        }
-        @Override
-        public void run() {
-            try {
-                while (shouldSlide) {
-                    if (bitmaps != null && bitmaps.size() > currPos) {
-                        mHandler.sendEmptyMessage(MESSAGE_OK);
-                        TimeUnit.SECONDS.sleep(3);
-                    } else {
-                        mHandler.sendEmptyMessage(MESSAGE_FAIL);
-                        shouldSlideSync = false;
-                        synchronized (this) {
-                            while (!shouldSlideSync) {
-                                wait();
-                            }
-                        }
-                    }
-                }
-            } catch (InterruptedException e) {
-                Log.d(TAG, e.toString());
-            }
+            Drawable[] drawables = {previous, next};
+            TransitionDrawable transition = new TransitionDrawable(drawables);
+
+            imageView.setImageDrawable(transition);
+            transition.startTransition(700);
         }
     }
 
@@ -125,9 +116,11 @@ public class ImageFragment extends Fragment {
 
         ArrayList<ListItem> pics = getActivity().getIntent().getParcelableArrayListExtra("pics");
         amountOfPics = pics.size();
+
         boolean onLooperPrepared;
+        int clickedItem = getActivity().getIntent().getIntExtra(ListFragment.CLICKED_ITEM_ID, -1);
         do {
-            onLooperPrepared = picsDownloader.queuePics(pics);
+            onLooperPrepared = picsDownloader.queuePics(pics, clickedItem);
         } while (!onLooperPrepared);
 
 
@@ -141,7 +134,6 @@ public class ImageFragment extends Fragment {
         return v;
     }
 
-
     private void createDialog() {
         dialog = new Dialog(getActivity());
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -154,6 +146,7 @@ public class ImageFragment extends Fragment {
         window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         dialog.show();
     }
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();
@@ -161,6 +154,32 @@ public class ImageFragment extends Fragment {
         picsDownloader.quit();
         mHandler.removeCallbacksAndMessages(null);
         shouldSlide = false;
+    }
+
+    private class SlidingThread extends Thread {
+        synchronized void resumeSliding() {
+            Log.d(TAG, "resumeSliding");
+            notify();
+        }
+
+        @Override
+        public void run() {
+            try {
+                while (shouldSlide) {
+                    if (bitmaps != null && bitmaps.size() > currPos) {
+                        mHandler.sendEmptyMessage(MESSAGE_OK);
+                        TimeUnit.SECONDS.sleep(3);
+                    } else {
+                        mHandler.sendEmptyMessage(MESSAGE_FAIL);
+                        synchronized (this) {
+                            wait();
+                        }
+                    }
+                }
+            } catch (InterruptedException e) {
+                Log.d(TAG, e.toString());
+            }
+        }
     }
 
 

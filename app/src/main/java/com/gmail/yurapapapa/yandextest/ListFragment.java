@@ -11,6 +11,9 @@ import android.preference.PreferenceManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -25,6 +28,10 @@ import com.yandex.disk.client.ListItem;
 import com.yandex.disk.client.ListParsingHandler;
 import com.yandex.disk.client.TransportClient;
 
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.DefaultHttpClient;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,6 +40,7 @@ import java.util.List;
  */
 public class ListFragment extends android.support.v4.app.ListFragment {
 
+    public static final String CLICKED_ITEM_ID = "clicked_item";
     private static final String TAG = "ListFragment";
     private Credentials credentials;
     private String mCurrentDir;
@@ -44,6 +52,7 @@ public class ListFragment extends android.support.v4.app.ListFragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
+        setHasOptionsMenu(true);
     }
 
 
@@ -67,6 +76,83 @@ public class ListFragment extends android.support.v4.app.ListFragment {
 
     }
 
+    @Override
+    public void onListItemClick(ListView l, View v, int position, long id) {
+        ListItem item = mCurrentItemsList.get(position);
+        if (item.isCollection()) {
+            mCurrentDir = item.getFullPath();
+            new Fetcher().execute();
+            return;
+        }
+        if (item.getMediaType().equals("image")) {
+            Toast.makeText(getActivity(), "is image " + item.getDisplayName(), Toast.LENGTH_LONG).show();
+            Intent imageIntent = new Intent(getActivity(), ImageActivity.class);
+            ArrayList<ListItem> pics = getPicsList();
+            int clickedItemId = 0;
+            for (int i = 0; i < pics.size(); i++) {
+                if (item.getFullPath().equals(pics.get(i).getFullPath())) {
+                    clickedItemId = i;
+                }
+            }
+            imageIntent.putExtra(CLICKED_ITEM_ID, clickedItemId);
+            imageIntent.putParcelableArrayListExtra("pics", getPicsList());
+            startActivity(imageIntent);
+        }
+    }
+
+    private ArrayList<ListItem> getPicsList() {
+        ArrayList<ListItem> pics = new ArrayList<ListItem>();
+        for (ListItem item : mCurrentItemsList) {
+            if (!item.isCollection() && item.getMediaType().equals("image")) {
+                pics.add(item);
+            }
+        }
+        for (ListItem item : pics)
+            Log.d(TAG, item.getDisplayName() + " " + item.getMediaType());
+        return pics;
+    }
+
+    public void onBackPressed() {
+        if (mCurrentDir.equals("/")) {
+            getActivity().finish();
+        } else {
+            int flash = mCurrentDir.lastIndexOf('/');
+            mCurrentDir = mCurrentDir.substring(0, flash + 1);
+            Log.d(TAG, "mCurrentDir " + mCurrentDir);
+            new Fetcher().execute();
+        }
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.my, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.sign_out) {
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+            prefs.edit().remove(MyActivity.TOKEN).apply();
+            startActivity(new Intent(getActivity(), MyActivity.class));
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void cancelToken() {
+        String token = PreferenceManager.getDefaultSharedPreferences(getActivity()).getString(MyActivity.TOKEN, null);
+        Log.d(TAG, "token sdf = " + token);
+        HttpPost post = new HttpPost("https://oauth.yandex.ru/api/revoke");
+        post.addHeader("Authorization", "Bearer " + token);
+        HttpClient client = new DefaultHttpClient();
+        try {
+            Log.d(TAG, "responseCode " + client.execute(post).getStatusLine().getStatusCode());
+        } catch (Exception e) {
+            Log.d(TAG, e.toString());
+        }
+        PreferenceManager.getDefaultSharedPreferences(getActivity()).edit().remove(MyActivity.TOKEN).apply();
+        ;
+    }
 
     private class MyAdapter extends ArrayAdapter<ListItem> {
         public MyAdapter(List<ListItem> objects) {
@@ -88,9 +174,9 @@ public class ListFragment extends android.support.v4.app.ListFragment {
 
     }
 
-
     private class Fetcher extends AsyncTask<Void, Void, List<ListItem>> {
         Dialog dialog;
+
         Fetcher() {
             super();
             mCurrentItemsList = new ArrayList<ListItem>();
@@ -142,50 +228,10 @@ public class ListFragment extends android.support.v4.app.ListFragment {
         protected void onPostExecute(List<ListItem> list) {
             super.onPostExecute(list);
             if (dialog != null && dialog.isShowing())
-            dialog.dismiss();
+                dialog.dismiss();
             Log.d(TAG, list.toString());
 
             setListAdapter(new MyAdapter(list));
         }
     }
-
-    @Override
-    public void onListItemClick(ListView l, View v, int position, long id) {
-        ListItem item = mCurrentItemsList.get(position);
-        if (item.isCollection()) {
-            mCurrentDir = item.getFullPath();
-            new Fetcher().execute();
-            return;
-        }
-        if (item.getMediaType().equals("image")) {
-            Toast.makeText(getActivity(), "is image " + item.getDisplayName(), Toast.LENGTH_LONG).show();
-            Intent imageIntent = new Intent(getActivity(), ImageActivity.class);
-            imageIntent.putParcelableArrayListExtra("pics", getPicsList());
-            startActivity(imageIntent);
-        }
-    }
-
-
-    private ArrayList<ListItem> getPicsList() {
-        ArrayList<ListItem> pics = new ArrayList<ListItem>();
-        for (ListItem item : mCurrentItemsList) {
-            if (!item.isCollection() && item.getMediaType().equals("image")) {
-                pics.add(item);
-            }
-        }
-        for (ListItem item : pics)
-            Log.d(TAG, item.getDisplayName() + " " + item.getMediaType());
-        return pics;
-    }
-    public void onBackPressed(){
-        if (mCurrentDir.equals("/")) {
-            getActivity().finish();
-        } else {
-            int flash = mCurrentDir.lastIndexOf('/');
-            mCurrentDir = mCurrentDir.substring(0, flash + 1);
-            Log.d(TAG, "mCurrentDir " + mCurrentDir);
-            new Fetcher().execute();
-        }
-    }
-
 }
