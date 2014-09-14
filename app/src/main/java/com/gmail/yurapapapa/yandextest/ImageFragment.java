@@ -1,6 +1,7 @@
 package com.gmail.yurapapapa.yandextest;
 
 import android.app.Dialog;
+import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
@@ -138,7 +139,14 @@ public class ImageFragment extends Fragment {
         dialog = new Dialog(getActivity());
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog);
-        dialog.setCancelable(false);
+        //dialog.setCancelable(false);
+
+        dialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialog) {
+                getActivity().finish();
+            }
+        });
         final Window window = dialog.getWindow();
         window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -158,7 +166,6 @@ public class ImageFragment extends Fragment {
 
     private class SlidingThread extends Thread {
         synchronized void resumeSliding() {
-            Log.d(TAG, "resumeSliding");
             notify();
         }
 

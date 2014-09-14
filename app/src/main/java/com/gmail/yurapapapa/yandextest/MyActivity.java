@@ -14,12 +14,12 @@ import java.util.regex.Pattern;
 
 
 public class MyActivity extends FragmentActivity {
+    public static final String FRAGMENT_AUTH_TAG = "ImageFragment";
     public static final String CLIENT_ID = "f0ef70586d6f48f488157456fea17322";
     public static final String AUTH_URL =
             "https://oauth.yandex.ru/authorize?response_type=token&client_id=" + CLIENT_ID + "&display=popup";
     private static final String TAG = "MyActivity";
-    private static final int GET_ACCOUNT_CREDS_INTENT = 100;
-    public static String FRAGMENT_TAG = "ListFragment";
+    public static String FRAGMENT_LIST_TAG = "ListFragment";
     public static String USERNAME = "username";
     public static String TOKEN = "token";
 
@@ -34,7 +34,7 @@ public class MyActivity extends FragmentActivity {
         String token = preferences.getString(TOKEN, null);
         if(token == null) {
             getSupportFragmentManager().beginTransaction().
-                    replace(android.R.id.content, new AuthFragment(), "authFrag").commit();
+                    replace(android.R.id.content, new AuthFragment(), FRAGMENT_AUTH_TAG).commit();
             return;
         }
         if(savedInstanceState == null) {
@@ -49,9 +49,10 @@ public class MyActivity extends FragmentActivity {
 
     private void startFragment() {
         getSupportFragmentManager().beginTransaction().
-                replace(android.R.id.content, new ListFragment(), FRAGMENT_TAG).commit();
+                replace(android.R.id.content, new ListFragment(), FRAGMENT_LIST_TAG).commit();
     }
-    private void onLogin() {
+
+    void onLogin() {
         Log.d(TAG, "onLogin");
         Uri data = getIntent().getData();
         setIntent(null);
@@ -83,7 +84,7 @@ public class MyActivity extends FragmentActivity {
         Log.d(TAG, "onBackPressed");
         Fragment fragment = getSupportFragmentManager().findFragmentById(android.R.id.content);
 
-        if (fragment.getTag().equals(FRAGMENT_TAG)) {
+        if (fragment.getTag().equals(FRAGMENT_LIST_TAG)) {
             ((ListFragment)fragment).onBackPressed();
         } else {
             super.onBackPressed();

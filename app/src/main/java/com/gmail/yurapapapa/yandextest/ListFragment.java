@@ -50,6 +50,7 @@ public class ListFragment extends android.support.v4.app.ListFragment {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
         setHasOptionsMenu(true);
@@ -58,6 +59,7 @@ public class ListFragment extends android.support.v4.app.ListFragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        Log.d(TAG, "onCreateView");
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
         String username = preferences.getString(MyActivity.USERNAME, null);
         String token = preferences.getString(MyActivity.TOKEN, null);
@@ -133,7 +135,8 @@ public class ListFragment extends android.support.v4.app.ListFragment {
         if (item.getItemId() == R.id.sign_out) {
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
             prefs.edit().remove(MyActivity.TOKEN).apply();
-            startActivity(new Intent(getActivity(), MyActivity.class));
+            getActivity().getSupportFragmentManager().beginTransaction().
+                    replace(android.R.id.content, new AuthFragment(), MyActivity.FRAGMENT_AUTH_TAG).commit();
             return true;
         }
         return super.onOptionsItemSelected(item);
